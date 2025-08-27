@@ -56,7 +56,7 @@ record LdappTableBlock(
     //         new XAttribute("cols", model.ColumnWidthsIns.Count.ToString())
     //     );
     // }
-    internal static LdappTableBlock? Parse(LegislationParser parser)
+    internal static LdappTableBlock? Parse(IParser<IBlock> parser)
     {
         // We can have a table on it's own *or* a table with a table num
         {
@@ -76,7 +76,7 @@ record LdappTableBlock(
         return null;
     }
 
-    private static WTable? ParseTable(LegislationParser parser)
+    private static WTable? ParseTable(IParser<IBlock> parser)
     {
         if (parser.Advance() is WTable table)
         {
@@ -117,9 +117,9 @@ partial record LdappTableNumber(
 
     const string TABLE_NUMBER_PATTERN = @"^Table\s+\w+$";
 
-    internal static LdappTableNumber? Parse(LegislationParser parser)
+    internal static LdappTableNumber? Parse(IParser<IBlock> parser)
     {
-        IBlock block = parser.Advance();
+        IBlock? block = parser.Advance();
         if (block is not WLine line) return null;
         if (!TableNumberPattern().IsMatch(line.NormalizedContent)) return null;
         return new LdappTableNumber(line, parser.Match(LdappTableCaptions.Parse));
@@ -134,7 +134,7 @@ class LdappTableCaptions
 
     private static readonly ILogger Logger = Logging.Factory.CreateLogger<Builder>();
 
-    internal static List<WLine>? Parse(LegislationParser parser)
+    internal static List<WLine>? Parse(IParser<IBlock> parser)
     {
         // Everything between the table num and the table itself is considered a caption
         List<WLine> captions = parser

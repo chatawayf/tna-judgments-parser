@@ -36,33 +36,27 @@ public partial class LegislationParser
         return new LegislationParser(simple, classifier).Parse();
     }
 
-    private LegislationParser(CaseLaw.WordDocument doc, LegislationClassifier classifier)
+    private LegislationParser(CaseLaw.WordDocument doc, LegislationClassifier classifier) : this(
+            doc.Body.Select(b => b.Block).ToList(),
+            DOCX.CSS.Extract(doc.Docx.MainDocumentPart, "#bill"),
+            classifier
+        )
+    { }
+
+    private LegislationParser(IEnumerable<IBlock> contents, DocumentStyle? style, LegislationClassifier classifier) : base(contents)
     {
-        // TODO: convert CaseLaw.WordDocument to record then the below just becomes:
-        // Document = doc with { Body = QuotedStructure.GroupQuotedStructures(doc.Body) };
-        // Document = new CaseLaw.WordDocument {
-        //     Docx = doc.Docx,
-        //     Header = doc.Header,
-        //     Body = QuotedStructure.GroupQuotedStructures(doc.Body.Select(b => b.Block)),
-
-        // };
-
-        // Document.Body = ;
-        // Input = QuotedStructure.GroupQuotedStructures(doc.Body.Select(b => b.Block));
-        //     // We can safely discard the `BlockWithBreak` added boolean here, we don't need it
-        Input = doc.Body.Select(b => b.Block).ToList();
-        Styles = DOCX.CSS.Extract(doc.Docx.MainDocumentPart, "#bill");
+        Styles = style;
         docName = classifier.DocName;
         frames = new Frames(classifier.DocName, classifier.GetContext());
-
-
     }
+
+    private delegate List<IBlock> InputTransformer(List<IBlock> blocks);
+
 
     private readonly ILogger Logger = Logging.Factory.CreateLogger<LegislationParser>();
     private readonly Frames frames;
-    // private readonly CaseLaw.WordDocument Document;
-    private List<IBlock> Input { get; init; }
-    private Dictionary<string, Dictionary<string, string>>? Styles { get;  init; }
+    private List<IBlock> Contents { get; init; }
+    private DocumentStyle? Styles { get;  init; }
 
     private int i = 0;
 
