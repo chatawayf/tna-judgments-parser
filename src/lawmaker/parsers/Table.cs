@@ -6,34 +6,24 @@ using System.Linq;
 using System.Xml.Linq;
 using System.Text.RegularExpressions;
 
-using Microsoft.Extensions.Logging;
 using UK.Gov.Legislation.Judgments;
 using UK.Gov.Legislation.Judgments.Parse;
-using DocumentFormat.OpenXml.Spreadsheet;
-using UK.Gov.NationalArchives.CaseLaw.PressSummaries;
 using UK.Gov.NationalArchives.CaseLaw.Parse;
+using System;
 
-// This class currently breaks from the convention of putting all the parsing in partial class LegislationParser.
-// I think it's ultimately a mistake to have such a big class spread over so many different files and I believe
-// partial classes weren't designed for that sort of thing.
+/* The EBNF grammar for table blocks can be represented like this (note: Table, Alphanumeric aren't specified here, hopefully they are relatively self explanatory):
+Table Block = [Table Number] Table ;
+Table Number = Number, [Captions] ;
+Number = "Table" Num ;
+Num = [Alphanumeric | "."]+ ; (* this will match nums such as 6a, a6, 6.a, ..6aa ..., etc - we're not being super strict here *)
+Captions = Heading, { Subheadings } ;
+*/
+
 record LdappTableBlock(
     LdappTableNumber? TableNumber,
     WTable Table
 ) : IBlock/*, IBuildable */
 {
-
-    // TODO: move this out - doesn't belong here, just testing out using Xml.Linq support
-    public static readonly XNamespace HtmlNamespace = "http://www.w3.org/1999/xhtml";
-    public static readonly XNamespace AknNamespace = "http://docs.oasis-open.org/legaldocml/ns/akn/3.0";
-
-    // public ILine? Heading => TableNumber?.Captions?.First();
-    // public ILine? Heading => null;
-
-    // public IFormattedText? Number => new WText(TableNumber?.Number is null ? "" : TableNumber.Number?.NormalizedContent,null);
-    // public IFormattedText? Number => null;
-    // public string Name => "tblock";
-
-    public IEnumerable<IBlock> Contents => ToList();
 
     // public XElement Build()
     // {
@@ -95,15 +85,6 @@ record LdappTableBlock(
         return new WCell(cell.Row, cell.Props, enriched);
     }
 
-    private List<IBlock> ToList()
-    {
-        List<IBlock> list = [];
-        if (TableNumber?.Number is not null) list.Add(TableNumber.Number);
-        if (TableNumber?.Captions is not null) list.AddRange(TableNumber.Captions);
-        list.Add(Table);
-        return list;
-    }
-
 }
 
 // There can optionally be an arbitrary number of text blocks between
@@ -132,7 +113,6 @@ partial record LdappTableNumber(
 class LdappTableCaptions
 {
 
-    private static readonly ILogger Logger = Logging.Factory.CreateLogger<Builder>();
 
     internal static List<WLine>? Parse(IParser<IBlock> parser)
     {
