@@ -6,9 +6,7 @@ using Microsoft.Extensions.Logging;
 using UK.Gov.Legislation.Judgments;
 using UK.Gov.Legislation.Judgments.Parse;
 
-namespace UK.Gov.Legislation.Lawmaker
-{
-
+namespace UK.Gov.Legislation.Lawmaker;
     public partial class LegislationParser
     {
 
@@ -16,7 +14,7 @@ namespace UK.Gov.Legislation.Lawmaker
 
         private void ParseBody()
         {
-            while (i < Document.Body.Count)
+            while (i < Contents.Count)
             {
                 IDivision div = ParseNextBodyDivision();
                 if (div is not null)
@@ -48,5 +46,3 @@ namespace UK.Gov.Legislation.Lawmaker
         }
 
     }
-
-}

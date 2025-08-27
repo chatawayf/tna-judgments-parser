@@ -20,7 +20,7 @@ namespace UK.Gov.Legislation.Lawmaker
 
             List<IDivision> children = [];
 
-            while (i < Document.Body.Count)
+            while (i < Contents.Count)
             {
                 if (BreakFromProv1())
                     break;
@@ -54,7 +54,7 @@ namespace UK.Gov.Legislation.Lawmaker
 
             List<IBlock> contents = [];
 
-            while (i < Document.Body.Count)
+            while (i < Contents.Count)
             {
                 if (BreakFromProv1())
                     break;
@@ -115,8 +115,8 @@ namespace UK.Gov.Legislation.Lawmaker
         }
 
         /// <summary>
-        /// Adds the given line to the list of contents. 
-        /// If the line resembles a Signature Name, it will be identified as such. 
+        /// Adds the given line to the list of contents.
+        /// If the line resembles a Signature Name, it will be identified as such.
         /// </summary>
         private static void AddLineToContents(List<IBlock> contents, WLine line, bool isAfterTab)
         {

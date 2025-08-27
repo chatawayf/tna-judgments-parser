@@ -58,14 +58,14 @@ namespace UK.Gov.Legislation.Lawmaker
 
             List<IBlock> intro = [enriched];
 
-            if (i == Document.Body.Count)
+            if (i == Contents.Count)
             {
                 return new DefinitionLeaf { Contents = intro };
             }
 
             List<IDivision> children = [];
 
-            while (i < Document.Body.Count)
+            while (i < Contents.Count)
             {
                 if (PeekDefinition(Current()))
                     break;

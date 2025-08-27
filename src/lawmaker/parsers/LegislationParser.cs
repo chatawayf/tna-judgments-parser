@@ -1,4 +1,6 @@
 #nullable enable
+using System.Linq;
+using System.Collections.Generic;
 using DocumentFormat.OpenXml.Packaging;
 using Microsoft.Extensions.Logging;
 
@@ -7,7 +9,10 @@ using AkN = UK.Gov.Legislation.Judgments.AkomaNtoso;
 using CaseLaw = UK.Gov.NationalArchives.CaseLaw.Parse;
 using DOCX = UK.Gov.Legislation.Judgments.DOCX;
 
+
 namespace UK.Gov.Legislation.Lawmaker;
+
+using DocumentStyle = Dictionary<string, Dictionary<string, string>>;
 public partial class LegislationParser
 {
 
@@ -31,18 +36,34 @@ public partial class LegislationParser
         return new LegislationParser(simple, classifier).Parse();
     }
 
-        private LegislationParser(CaseLaw.WordDocument doc, LegislationClassifier classifier)
-        {
-            Document = doc;
-            docName = classifier.DocName;
-            frames = new Frames(classifier.DocName, classifier.GetContext());
+    private LegislationParser(CaseLaw.WordDocument doc, LegislationClassifier classifier)
+    {
+        // TODO: convert CaseLaw.WordDocument to record then the below just becomes:
+        // Document = doc with { Body = QuotedStructure.GroupQuotedStructures(doc.Body) };
+        // Document = new CaseLaw.WordDocument {
+        //     Docx = doc.Docx,
+        //     Header = doc.Header,
+        //     Body = QuotedStructure.GroupQuotedStructures(doc.Body.Select(b => b.Block)),
+
+        // };
+
+        // Document.Body = ;
+        // Input = QuotedStructure.GroupQuotedStructures(doc.Body.Select(b => b.Block));
+        //     // We can safely discard the `BlockWithBreak` added boolean here, we don't need it
+        Input = doc.Body.Select(b => b.Block).ToList();
+        Styles = DOCX.CSS.Extract(doc.Docx.MainDocumentPart, "#bill");
+        docName = classifier.DocName;
+        frames = new Frames(classifier.DocName, classifier.GetContext());
 
 
-        }
+    }
 
     private readonly ILogger Logger = Logging.Factory.CreateLogger<LegislationParser>();
-    private Frames frames;
-    private readonly CaseLaw.WordDocument Document;
+    private readonly Frames frames;
+    // private readonly CaseLaw.WordDocument Document;
+    private List<IBlock> Input { get; init; }
+    private Dictionary<string, Dictionary<string, string>>? Styles { get;  init; }
+
     private int i = 0;
 
     int parseDepth = 0;
@@ -55,7 +76,7 @@ public partial class LegislationParser
         ParseAndEnrichHeader();
         ParseBody();
 
-        if (i != Document.Body.Count)
+        if (i != Contents.Count)
             Logger.LogWarning("parsing did not complete: {}", i);
 
         Logger.LogInformation($"Maximum ParseAndMemoize depth reached: {parseAndMemoizeDepthMax}");
@@ -67,16 +88,15 @@ public partial class LegislationParser
         QuotedTextEnricher quotedTextEnricher = new($"(?:{{.*?}})?{StartQuotePattern()}", EndQuotePattern());
         quotedTextEnricher.EnrichDivisions(body);
 
-            FootnoteEnricher footnoteEnricher = new FootnoteEnricher();
-            footnoteEnricher.EnrichBlocks(preamble);
-            footnoteEnricher.EnrichDivisions(body);
+        FootnoteEnricher footnoteEnricher = new FootnoteEnricher();
+        footnoteEnricher.EnrichBlocks(preamble);
+        footnoteEnricher.EnrichDivisions(body);
 
-            var styles = DOCX.CSS.Extract(Document.Docx.MainDocumentPart, "#bill");
 
         return new Lawmaker.Document
         {
             Type = docName,
-            Styles = styles,
+            Styles = Styles,
             CoverPage = coverPage,
             Preface = preface,
             Preamble = preamble,

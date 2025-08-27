@@ -27,7 +27,7 @@ namespace UK.Gov.Legislation.Lawmaker
 
             List<IDivision> children = [];
 
-            while (i < Document.Body.Count)
+            while (i < Contents.Count)
             {
                 if (CurrentLineIsIndentedLessThan(line))
                     break;

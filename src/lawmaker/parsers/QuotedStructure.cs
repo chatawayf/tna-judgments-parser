@@ -1,4 +1,4 @@
-
+// #nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,9 +8,23 @@ using UK.Gov.Legislation.Judgments;
 using UK.Gov.Legislation.Judgments.Parse;
 using UK.Gov.NationalArchives.Enrichment;
 
-namespace UK.Gov.Legislation.Lawmaker
-{
+namespace UK.Gov.Legislation.Lawmaker;
 
+// public record QuotedStructure(
+//     IInline PrecedingText,
+//     IInline? QuotedText, // marked up as quoted text later
+//     IEnumerable<IBlock> Contents,
+//     IInline AppendText,
+// )
+// {
+
+//     public static IEnumerable<IBlock> GroupQuotedStructures(IEnumerable<IBlock> body)
+//     {
+//         return body;
+//     }
+// }
+
+// )
     public partial class LegislationParser
     {
 
@@ -268,7 +282,7 @@ namespace UK.Gov.Legislation.Lawmaker
         private List<IQuotedStructure> HandleQuotedStructuresAfter(WLine line)
         {
             List<IQuotedStructure> quotedStructures = [];
-            if (i == Document.Body.Count)
+            if (i == Input.Count)
                 return [];
             int save = i;
 
@@ -288,7 +302,7 @@ namespace UK.Gov.Legislation.Lawmaker
                 frames.Pop();
             }
             // Handle regular quoted structures
-            while (i < Document.Body.Count && IsStartOfQuotedStructure(Current()))
+            while (i < Input.Count && IsStartOfQuotedStructure(Current()))
             {
                 save = i;
                 bool isValidFrame = AddQuotedStructureFrame(Current());
@@ -307,9 +321,9 @@ namespace UK.Gov.Legislation.Lawmaker
 
         private BlockQuotedStructure ParseQuotedStructure()
         {
-            if (i == Document.Body.Count)
+            if (i == Input.Count)
                 return null;
-            IBlock block = Document.Body[i].Block;
+            IBlock block = Input[i];
             if (block is not WLine line)
                 return null;
             return ParseAndMemoize(line, "QuotedStructure", ParseQuotedStructure);
@@ -319,7 +333,7 @@ namespace UK.Gov.Legislation.Lawmaker
         {
             List<IDivision> contents = [];
             quoteDepth += 1;
-            while (i < Document.Body.Count)
+            while (i < Input.Count)
             {
                 int save = i;
                 var child = ParseLine();
@@ -471,5 +485,3 @@ namespace UK.Gov.Legislation.Lawmaker
         }
 
     }
-
-}

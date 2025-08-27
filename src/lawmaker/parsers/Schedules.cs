@@ -37,14 +37,14 @@ namespace UK.Gov.Legislation.Lawmaker
                 return false;
             if (!IsCenterAligned(line))
                 return false;
-            if (i > Document.Body.Count - 3)
+            if (i > Contents.Count - 3)
                 return false;
             string heading = IgnoreQuotedStructureStart(line.NormalizedContent, quoteDepth);
             if (!Schedules.IsValidHeading(heading))
                 return false;
 
             // Schedules container must be followed by Schedule
-            if (Document.Body[i + 1].Block is not WLine line2)
+            if (Contents[i + 1] is not WLine line2)
                 return false;
             if (!IsCenterAligned(line2))
                 return false;
@@ -55,7 +55,7 @@ namespace UK.Gov.Legislation.Lawmaker
         {
             frames.PushScheduleContext();
             List<IDivision> children = [];
-            while (i < Document.Body.Count)
+            while (i < Contents.Count)
             {
                 HContainer peek = PeekGroupingProvision();
                 if (peek != null && !Schedules.IsValidChild(peek))

@@ -24,7 +24,7 @@ namespace UK.Gov.Legislation.Lawmaker
             );
             IFormattedText number = new WText(numberString, null);
 
-            if (Document.Body[i + 1].Block is not WLine line2)
+            if (Contents[i + 1] is not WLine line2)
                 return null;
 
             WLine referenceNoteLine = null;
@@ -32,7 +32,7 @@ namespace UK.Gov.Legislation.Lawmaker
             if (IsRightAligned(line2))
             {
                 // Handle reference note
-                if (Document.Body[i + 2].Block is not WLine line3)
+                if (Contents[i + 2] is not WLine line3)
                     return null;
                 referenceNoteLine = line2;
                 headingLine = line3;
@@ -85,7 +85,7 @@ namespace UK.Gov.Legislation.Lawmaker
                 return false;
             if (!IsCenterAligned(line))
                 return false;
-            if (i > Document.Body.Count - 3)
+            if (i > Contents.Count - 3)
                 return false;
             // In secondary docs sometimes the referenceNote is on the same line as the num so IgnoreRightTabbedText() should get rid of that
             string numText = IgnoreQuotedStructureStart(frames.IsSecondaryDocName() ? IgnoreRightTabbedText(line) : line.NormalizedContent, quoteDepth);
@@ -98,7 +98,7 @@ namespace UK.Gov.Legislation.Lawmaker
         {
             frames.PushScheduleContext();
             List<IDivision> children = [];
-            while (i < Document.Body.Count)
+            while (i < Contents.Count)
             {
                 HContainer peek = PeekGroupingProvision();
                 if (peek != null && !Schedule.IsValidChild(peek))

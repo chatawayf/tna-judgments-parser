@@ -186,7 +186,7 @@ namespace UK.Gov.Legislation.Lawmaker
             List<IBlock> container = [];
             HandleMod(first, container);
 
-            while (i < Document.Body.Count)
+            while (i < Contents.Count)
             {
                 int save = i;
                 IList<IBlock> extraParagraph = GetExtraParagraph(line);
