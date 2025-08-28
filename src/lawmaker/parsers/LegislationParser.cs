@@ -13,7 +13,7 @@ using DOCX = UK.Gov.Legislation.Judgments.DOCX;
 namespace UK.Gov.Legislation.Lawmaker;
 
 using DocumentStyle = Dictionary<string, Dictionary<string, string>>;
-public partial class LegislationParser
+public partial class LegislationParser : BlockParser
 {
 
     // We may need to hold this information in the Frames, but that may be tricky. For now we store them
@@ -37,7 +37,7 @@ public partial class LegislationParser
     }
 
     private LegislationParser(CaseLaw.WordDocument doc, LegislationClassifier classifier) : this(
-            doc.Body.Select(b => b.Block).ToList(),
+            QuotedStructureSplitter.Split(doc.Body.Select(b => b.Block).ToList()),
             DOCX.CSS.Extract(doc.Docx.MainDocumentPart, "#bill"),
             classifier
         )
@@ -55,7 +55,7 @@ public partial class LegislationParser
 
     private readonly ILogger Logger = Logging.Factory.CreateLogger<LegislationParser>();
     private readonly Frames frames;
-    private List<IBlock> Contents { get; init; }
+    // private new List<IBlock> Contents { get; init; }
     private DocumentStyle? Styles { get;  init; }
 
     private int i = 0;
@@ -78,9 +78,9 @@ public partial class LegislationParser
 
         // Handle start and end quotes after parsing is complete, because it alters the
         // contents of parsed results which does not work well with memoization
-        ExtractAllQuotesAndAppendTexts(body);
-        QuotedTextEnricher quotedTextEnricher = new($"(?:{{.*?}})?{StartQuotePattern()}", EndQuotePattern());
-        quotedTextEnricher.EnrichDivisions(body);
+        // QuotedStructure.ExtractAllQuotesAndAppendTexts(body);
+        // QuotedTextEnricher quotedTextEnricher = new($"(?:{{.*?}})?{StartQuotePattern()}", EndQuotePattern());
+        // quotedTextEnricher.EnrichDivisions(body);
 
         FootnoteEnricher footnoteEnricher = new FootnoteEnricher();
         footnoteEnricher.EnrichBlocks(preamble);

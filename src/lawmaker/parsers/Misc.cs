@@ -33,7 +33,7 @@ namespace UK.Gov.Legislation.Lawmaker
             return alignment == AlignmentValues.Right;
         }
 
-        private static string GetRightTabbedText(WLine line)
+        private static string? GetRightTabbedText(WLine line)
         {
             if (ContentHasTabbedText(line))
             {

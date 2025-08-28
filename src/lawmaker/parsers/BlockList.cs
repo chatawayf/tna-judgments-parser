@@ -18,14 +18,14 @@ class BlockList : IBlock
 
     public static IEnumerable<IBlock> ParseBlocks(IEnumerable<IBlock> blocks)
     {
-        IParser parser = new BlockParser(blocks);
+        IParser<IBlock> parser = new BlockParser(blocks);
         List<IBlock> enrichedBlocks = new List<IBlock>();
 
         while (!parser.IsAtEnd())
         {
             // Strip all empty lines from the cell, with a caveat:
             // Leave a single empty line if the cell consists entirely of empty lines.
-            if (parser.Current().IsEmptyLine() && enrichedBlocks.Count() > 0)
+            if (parser.Current()?.IsEmptyLine() ?? false && enrichedBlocks.Count() > 0)
             {
                 parser.Advance();
                 continue;
@@ -39,14 +39,14 @@ class BlockList : IBlock
         return enrichedBlocks;
     }
 
-    internal static BlockList? Parse(IParser parser)
+    internal static BlockList? Parse(IParser<IBlock> parser)
     {
         if (parser.Match(ParseBlockList) is BlockList blockList)
             return blockList;
         return null;
     }
 
-    private static BlockList? ParseBlockList(IParser parser)
+    private static BlockList? ParseBlockList(IParser<IBlock> parser)
     {
         IBlock block = parser.Current();
         if (block is not WLine line)
@@ -69,13 +69,13 @@ class BlockList : IBlock
 
         while (!parser.IsAtEnd())
         {
-            // Skip over empty lines to ensure they do not influence parsing. 
+            // Skip over empty lines to ensure they do not influence parsing.
             parser.AdvanceWhile(block => block.IsEmptyLine());
-            if (parser.IsAtEnd()) 
+            if (parser.IsAtEnd())
                 break;
 
             IBlock currentBlock = parser.Current();
-            if (currentBlock is not WLine currentLine) 
+            if (currentBlock is not WLine currentLine)
                 break;
 
             // Stop parsing BlockListItem children upon reaching a line with insufficient indentation.
@@ -114,14 +114,14 @@ class BlockList : IBlock
 
     public required IList<IBlock> Contents { get; internal init; }
 
-    internal static BlockListItem? Parse(IParser parser)
+    internal static BlockListItem? Parse(IParser<IBlock> parser)
     {
         if (parser.Match(ParseBlockListItem) is BlockListItem blockListItem)
             return blockListItem;
         return null;
     }
 
-    private static BlockListItem? ParseBlockListItem(IParser parser)
+    private static BlockListItem? ParseBlockListItem(IParser<IBlock> parser)
     {
         IFormattedText? number = null;
         IList<IBlock> contents = [];

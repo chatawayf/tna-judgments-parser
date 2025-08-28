@@ -100,7 +100,7 @@ namespace UK.Gov.Legislation.Lawmaker
             if (!IsLeftAligned(line))
                 return false;
 
-            string definitionPattern = $@"^{QuotedStructureStartPattern()}?{DefPattern()}.*\w+.*$";
+            string definitionPattern = $@"^{QuotedStructure.QuotedStructureStartPattern()}?{DefPattern()}.*\w+.*$";
             if (!Regex.IsMatch(line.NormalizedContent, definitionPattern))
                 return false;
             return true;
