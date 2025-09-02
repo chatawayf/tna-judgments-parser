@@ -371,7 +371,11 @@ class WLine : ILine {
             return withText.Select(t => t.Underline).All(u => u.HasValue && u.Value != UnderlineValues2.None);
     }
 
-}
+        public override string ToString()
+        {
+            return $"WLine: {String.Join(", ", contents.Select(i => i.ToString()).ToList())}";
+        }
+    }
 
 class WUnknownLine : WLine, IUnknownLine {
 

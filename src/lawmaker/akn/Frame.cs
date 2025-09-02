@@ -1,10 +1,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Text.RegularExpressions;
 
-namespace UK.Gov.Legislation.Lawmaker
-{
+namespace UK.Gov.Legislation.Lawmaker;
 
 
     public enum Context { SECTIONS, SCHEDULES, ARTICLES, RULES, REGULATIONS }
@@ -104,20 +105,66 @@ namespace UK.Gov.Legislation.Lawmaker
             frames.Pop();
             return true;
         }
-
-        private class Frame
-        {
-            public DocName DocName { get; }
-            public Context Context { get; }
-
-            public Frame(DocName docName, Context context)
-            {
-                DocName = docName;
-                Context = context;
-            }
-
-        }
-
-    }
-
 }
+
+internal record struct Frame(
+    DocName DocName,
+    Context Context
+)
+// : IParsable<Frame>
+{
+    internal static string quotedStructureInfoPattern = @"(?'info'{?(?'docName'.*?)(?:-(?'context'.*?))?}?\s*)?";
+    internal static Frame defaultFrame = new(DocName.NIA, Context.SECTIONS);
+    // public static Frame Parse(string s, IFormatProvider provider)
+    // {
+
+    // }
+
+    // public static bool TryParse([NotNullWhen(true)] string s, IFormatProvider provider, [MaybeNullWhen(false)] out Frame result)
+    // {
+    //     string text = Regex.Replace(s, @"\s+", string.Empty);
+    //     MatchCollection matches = Regex.Matches(text, quotedStructureInfoPattern);
+    //     if (matches.Count == 0)
+    //     {
+    //         // Quoted structure start pattern could not be matched.
+    //         // This should not be possible in practice.
+    //         // ideally we return null here but NRT doesn't play nicely here
+    //         result = defaultFrame;
+    //         return false;
+    //     }
+    //     GroupCollection groups = matches.First().Groups;
+    //     if (!groups["info"].Success || !groups["docName"].Success)
+    //     {
+    //         // No frame info present - valid scenario.
+    //         result = defaultFrame;
+    //         return false;
+    //     }
+    //     if (!Enum.TryParse(groups["docName"].Value.ToUpper(), out DocName docName))
+    //     {
+    //         // Frame info present but DocName is malformed - invalid scenario.
+    //         result = defaultFrame;
+    //         return false;
+    //     }
+    //     Context? context = Contexts.ToEnum(groups["context"].Value);
+    //     Context defaultContext = Frames.IsSecondaryDocName(docName) ? Context.REGULATIONS : Context.SECTIONS;
+    //     if (!groups["context"].Success)
+    //     {
+    //         // Frame info has DocName but no Context - valid scenario.
+    //         // Resort to default Context.
+    //         frames.Push(docName, defaultContext);
+    //         return true;
+    //     }
+    //     if (context == null)
+    //     {
+    //         // Frame info has a Context, but it is malformed - invalid scenario.
+    //         // Resort to default Context.
+    //         frames.Push(docName, defaultContext);
+    //         return false;
+    //     }
+    //     // Frame info has valid DocName and Context
+    //     frames.Push(docName, (Context)context);
+    //     return true;
+    //     throw new NotImplementedException();
+    // }
+}
+

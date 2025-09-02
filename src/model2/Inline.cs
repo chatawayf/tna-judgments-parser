@@ -9,7 +9,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 
 namespace UK.Gov.Legislation.Judgments.Parse {
 
-internal class WText : IFormattedText {
+internal class WText : IFormattedText, ISplittable<IInline> {
 
     public readonly RunProperties properties;
     private readonly string text;
@@ -181,6 +181,25 @@ internal class WText : IFormattedText {
         var first = text.Substring(0, i);
         var second = text.Substring(i);
         return new Tuple<WText, WText>( new WText(first, properties), new WText(second, properties) );
+    }
+
+    private static Func<int, int> GetRange(int[] indexes) => i => i switch {
+        _ when i < indexes.FirstOrDefault() => indexes.Select((charIndex, index) => (charIndex, index)).FirstOrDefault(),
+        _ when i > indexes.LastOrDefault() => indexes indexes
+            .Zip(indexes.Skip(1), (a, b) => (a, b))
+    }
+        // indexes.Aggregate(new List<(int, int)>(),
+        // (acc, i) =>
+        // {
+        //     if (acc.Count() == 0) acc.Add()
+        // })
+
+    public IEnumerable<IInline> Split(params int[] indexes)
+    {
+        IEnumerable<Tuple<WText, WText>> splits = indexes
+            .OrderByDescending(i => i)
+            .Select((charIndex, i) => (charIndex, i))
+        return [splits.FirstOrDefault().Item1];
     }
 
     /// <summary>
