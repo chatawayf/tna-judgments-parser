@@ -42,7 +42,7 @@ namespace UK.Gov.Legislation.Lawmaker
             if (Current() is not WLine line)
                 return null;
 
-            HContainer hContainer;
+            HContainer hContainer = null;
 
             if (frames.IsScheduleContext())
                 hContainer = ParseScheduleLine(line);
@@ -386,6 +386,8 @@ namespace UK.Gov.Legislation.Lawmaker
 
             return null;
         }
+
+        internal bool IsStartOfBody() => PeekBodyStartProvision() is not null;
 
     }
 }
