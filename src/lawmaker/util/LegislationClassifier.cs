@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 namespace UK.Gov.Legislation.Lawmaker;
 
 public enum DocName
@@ -44,7 +45,7 @@ public static class DocNames
             throw new Exception("unrecognized document type: " + documentName);
     }
 
-    public static DocName ToEnacted(DocName docName)
+    public static DocName ToEnacted(this DocName docName)
     {
         // C# will never be happy with exhaustive switch statements because you can always pass (DocName)20
         return docName switch
@@ -81,7 +82,10 @@ public static class DocNames
         };
     }
 
-    public static LegislationType GetLegislationType(DocName docName)
+    public static bool IsEnacted(this DocName docName) =>
+        docName == docName.ToEnacted();
+
+    public static LegislationType GetLegislationType(this DocName docName)
     {
         return docName switch
         {
@@ -111,7 +115,7 @@ public static class DocNames
         };
     }
 
-    public static bool IsSecondaryDocName(DocName docName)
+    public static bool IsSecondaryDocName(this DocName docName)
     {
         return GetLegislationType(docName) == LegislationType.SECONDARY;
     }
@@ -144,7 +148,7 @@ public readonly record struct LegislationClassifier(
     string? Procedure
 )
 {
-    
+
     public Context GetContext()
     {
         return this switch
