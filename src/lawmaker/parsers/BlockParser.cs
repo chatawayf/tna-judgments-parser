@@ -16,10 +16,11 @@ public class BlockParser : IParser<IBlock>
     protected int i = 0;
     internal readonly List<IBlock> Body;
 
-    public required LanguageService LanguageService { get; init; }
+    public LanguageService LanguageService { get; }
 
-    public BlockParser(IEnumerable<IBlock> contents)
+    public BlockParser(LanguageService languageService, IEnumerable<IBlock> contents)
     {
+        this.LanguageService = languageService;
         Body = contents.ToList();
     }
 
@@ -78,7 +79,7 @@ public class BlockParser : IParser<IBlock>
         return list.ToList();
     }
 
-    public R? Match<R>(IParser<IBlock>.ParseStrategy<R> strategy)
+    private R? Match<R>(IParser<IBlock>.ParseStrategy<R> strategy)
     {
         // TODO: memoize here if needed
         int save = this.Save();
@@ -99,7 +100,7 @@ public class BlockParser : IParser<IBlock>
         return default;
     }
 
-    public List<R> MatchWhile<R>(Predicate<IBlock> condition, params IParser<IBlock>.ParseStrategy<R>[] strategies)
+    public List<R>? MatchWhile<R>(Predicate<IBlock> condition, params IParser<IBlock>.ParseStrategy<R>[] strategies)
     {
         List<R> matches = [];
         while (Current() is IBlock r
@@ -109,21 +110,8 @@ public class BlockParser : IParser<IBlock>
         {
             matches.Add(match);
         }
-        return matches;
+        return matches.Count != 0 ? matches : null;
     }
 
     private bool IsInRange(int i) => i >= 0 && i < Body.Count;
-
-    public List<R>? MatchWhile<R>(Predicate<R> condition, params IParser<IBlock>.ParseStrategy<R>[] strategies)
-    {
-        List<R> matches = [];
-        while (Current() is R r
-            && condition(r)
-            && Match(strategies) is R match
-            && !IsAtEnd())
-        {
-            matches.Add(match);
-        }
-        return matches.Count != 0 ? matches : null;
-    }
 }

@@ -8,6 +8,8 @@ using Microsoft.Extensions.Logging;
 using UK.Gov.Legislation.Judgments;
 using UK.Gov.Legislation.Judgments.Parse;
 using UK.Gov.Legislation.Lawmaker.Date;
+
+using static UK.Gov.Legislation.Lawmaker.IParser<UK.Gov.Legislation.Judgments.IBlock>;
 using static UK.Gov.Legislation.Lawmaker.XmlNamespaces;
 
 namespace UK.Gov.Legislation.Lawmaker.Preface;
@@ -49,9 +51,9 @@ internal partial record SIPreface(IEnumerable<IBlock> Blocks) : IBlock, IBuildab
     etc...
 
     */
-    internal static SIPreface? Parse(IParser<IBlock> parser) =>
+    internal static SIPreface? Parse(IStatefulParser<IBlock, Document.State> parser) =>
         parser.MatchWhile(
-            block => !TableOfContents.IsTableOfContentsHeading(block, parser.LanguageService),
+            (block, _) => !TableOfContents.IsTableOfContentsHeading(block, parser.State.LanguageService),
             PrefaceLine
         ) is IEnumerable<IBlock> lines
         && lines.Any(block => block is DatesContainer) // always expect a date contianer in the preface
@@ -62,7 +64,7 @@ internal partial record SIPreface(IEnumerable<IBlock> Blocks) : IBlock, IBuildab
     // for now, order of the preface elements doesn't matter as we only
     // rely on the MS Word Style, however it may be more useful to enforce
     // the order of preface elements
-    private static IBlock? PrefaceLine(IParser<IBlock> parser) =>
+    private static IBlock? PrefaceLine(IStatefulParser<IBlock, Document.State> parser) =>
         parser.Match<IBlock>(
             CorrectionRubric.Parse,
             ProceduralRubric.Parse,

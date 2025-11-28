@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Linq;
 using UK.Gov.Legislation.Judgments;
 using UK.Gov.Legislation.Judgments.Parse;
+
+using static UK.Gov.Legislation.Lawmaker.IStatefulParser<Judgments.IBlock, Document.State>;
 using static UK.Gov.Legislation.Lawmaker.LanguageService;
 record TableOfContents(IEnumerable<TableOfContentsLine> Lines)
 {
@@ -21,22 +23,22 @@ record TableOfContents(IEnumerable<TableOfContentsLine> Lines)
             && languageService
                 .IsMatch(line.NormalizedContent, ContentsHeadingPatterns);
 
-    public static TableOfContents? Parse(IParser<IBlock> parser)
+    public static (TableOfContents?, StateUpdate?) Parse(IStatefulParser<IBlock, Document.State> parser)
     {
         // Identify 'CONTENTS' heading
         IBlock? block = parser.Advance();
-        if (!IsTableOfContentsHeading(block, parser.LanguageService))
+        if (!IsTableOfContentsHeading(block, parser.State.LanguageService))
         {
-            return null;
+            return (default, default);
         }
         if (parser.MatchWhile(TableOfContentsLine.Parse)
             is IEnumerable<TableOfContentsLine> lines
             && lines.Any())
         {
-            return new(lines);
+            return (new(lines), default);
         } else
         {
-            return null;
+            return (default, default);
         }
     }
 }

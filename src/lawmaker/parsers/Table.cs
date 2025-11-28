@@ -13,6 +13,7 @@ using DocumentFormat.OpenXml.Spreadsheet;
 using UK.Gov.NationalArchives.CaseLaw.PressSummaries;
 using UK.Gov.NationalArchives.CaseLaw.Parse;
 using static UK.Gov.Legislation.Lawmaker.LanguageService;
+using static UK.Gov.Legislation.Lawmaker.IStatefulParser<Judgments.IBlock, Document.State>;
 
 // This class currently breaks from the convention of putting all the parsing in partial class LegislationParser.
 // I think it's ultimately a mistake to have such a big class spread over so many different files and I believe
@@ -38,28 +39,7 @@ record LdappTableBlock(
         ? Table.Lines
         : TableNumber.Lines.Concat(Table.Lines);
 
-    // public XElement Build()
-    // {
-    //     XElement tblock = new("tblock",
-    //         new XAttribute("class", "table"),
-    //         new XAttribute("xmlns", Builder.AknNamespace),
-    //         TableNumber != null ? new XElement("num", TableNumber?.Number.NormalizedContent) : null,
-    //         new XElement("foreign",
-    //             BuildTable(Table)
-    //         )
-    //     );
-    // }
-
-    // private XElement BuildTable(ITable model)
-    // {
-    //     return new("table",
-    //         new XAttribute("xmlns", HtmlNamespace),
-    //         new XAttribute("xmlns:akn", AknNamespace),
-    //         new XAttribute(HtmlNamespace + "class", "allBorders tableleft width100"),
-    //         new XAttribute("cols", model.ColumnWidthsIns.Count.ToString())
-    //     );
-    // }
-    internal static LdappTableBlock? Parse(IParser<IBlock> parser)
+    internal static LdappTableBlock? Parse(IStatefulParser<IBlock, Document.State> parser)
     {
         // We can have a table on it's own *or* a table with a table num
         LdappTableNumber? number = parser.Match(LdappTableNumber.Parse);
@@ -70,23 +50,23 @@ record LdappTableBlock(
         return null;
     }
 
-    private static WTable? ParseTable(IParser<IBlock> parser)
+    private static (WTable? table, StateUpdate? stateUpdate) ParseTable(IStatefulParser<IBlock, Document.State> parser)
     {
         if (parser.Advance() is WTable table)
         {
             // Identify lines with leading numbers in each table cell.
             WTable extracted = WTable.Enrich(table, HardNumbers.ExtractTableCell);
             // Parse any structured content in each table cell.
-            return WTable.Enrich(extracted, ParseTableCell(parser.LanguageService));
+            return (WTable.Enrich(extracted, ParseTableCell(parser.State.LanguageService)), default);
         }
-        return null;
+        return (default, default);
     }
 
     // Creates BlockLists from structured content inside table cells (if any).
     private static System.Func<WCell, WCell> ParseTableCell(LanguageService languageService) =>
     (WCell cell) =>
     {
-        BlockParser parser = new(cell.Contents) { LanguageService = languageService};
+        BlockParser parser = new(languageService, cell.Contents);
         IEnumerable<IBlock> enriched = BlockList.ParseFrom(parser);
         return new WCell(cell.Row, cell.Props, enriched);
     };
@@ -110,12 +90,12 @@ partial record LdappTableNumber(
 
     public IEnumerable<WLine> Lines => Captions is null ? [Number] : Captions.Prepend(Number);
 
-    internal static LdappTableNumber? Parse(IParser<IBlock> parser)
+    internal static (LdappTableNumber?, StateUpdate?) Parse(IStatefulParser<IBlock, Document.State> parser)
     {
         IBlock? block = parser.Advance();
-        if (block is not WLine line) return null;
-        if (!parser.LanguageService.IsMatch(line.NormalizedContent, TableNumberPatterns)) return null;
-        return new LdappTableNumber(line, parser.Match(LdappTableCaptions.Parse));
+        if (block is not WLine line) return (default, default);
+        if (!parser.State.LanguageService.IsMatch(line.NormalizedContent, TableNumberPatterns)) return (default, default);
+        return (new LdappTableNumber(line, parser.Match(LdappTableCaptions.Parse)), default);
     }
 }
 

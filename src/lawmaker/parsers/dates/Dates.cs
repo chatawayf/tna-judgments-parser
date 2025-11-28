@@ -11,7 +11,7 @@ using UK.Gov.Legislation.Judgments.Parse;
 using static  UK.Gov.Legislation.Lawmaker.XmlNamespaces;
 
 namespace UK.Gov.Legislation.Lawmaker.Date;
-public record DatesContainer(IEnumerable<DateBlock> DateBlocks) : IBlock, IBuildable<XNode>
+record DatesContainer(IEnumerable<DateBlock> DateBlocks) : IBlock, IBuildable<XNode>
 {
     // temporary workaround for the broken eId logic in Lawmaker
     internal static int commenceDateOC = 0;
@@ -24,23 +24,26 @@ public record DatesContainer(IEnumerable<DateBlock> DateBlocks) : IBlock, IBuild
         );
     }
 
-    public static DatesContainer? Parse(IParser<IBlock> parser) =>
-        parser.MatchWhile(
-            l => l is not WLine line || !TableOfContents.IsTableOfContentsHeading(line, parser.LanguageService)
-                && !Preamble.IsStart(line),
-
+    public static DatesContainer? Parse(IStatefulParser<IBlock, Document.State> parser)
+    {
+        Predicate<(IBlock, Document.State)> pred = l => l.Item1 is not WLine line || !TableOfContents.IsTableOfContentsHeading(line, parser.State.LanguageService)
+                && !Preamble.IsStart(line);
+        return parser.MatchWhile(
+            pred,
             DateBlock.Parse
             ) is IEnumerable<DateBlock> dates
             && dates.Any() ? new(dates) : null;
 
+    }
 }
 
 
 
-public abstract partial record DateBlock(
+abstract partial record DateBlock(
     string Name,
     string SpanText,
     DocDate Date,
+    ReferenceKey? Key = null,
     string? Class = null
 ) : IBlock, IBuildable<XNode>
 {
@@ -62,8 +65,8 @@ public abstract partial record DateBlock(
     // eIds are correct for Lawmaker (until Lawmaker can be fixed)
     public string GetCommenceEId() => "fnt__dates___commenceDate" + this switch
     {
-        CommenceDate(_, _, UnknownDate _, _) => "Description",
-        CommenceDate(_, _, NoDate _, _) => "Description",
+        CommenceDate(_, UnknownDate _, _) => "Description",
+        CommenceDate(_, NoDate _, _) => "Description",
         _ => IncrementCommenceOC(),
     } + (DatesContainer.commenceDateOC > 1 ? $"__oc_{DatesContainer.commenceDateOC}" : "");
 
@@ -79,35 +82,55 @@ public abstract partial record DateBlock(
         return "Description";
     }
 
-    public static DateBlock? Parse(IParser<IBlock> parser)
+    public static (DateBlock?, IStatefulParser<IBlock, Document.State>.StateUpdate?)
+    Parse(IStatefulParser<IBlock, Document.State> parser)
     {
-        if (parser.Advance() is not WLine line) return null;
+        if (parser.Advance() is not WLine line) return (default, default);
         (string? spanText, string? dateText) = ExtractSpanAndDate(line.TextContent);
 
-        if (spanText == null)
-        { // we have no text to go on, if the style matches
-            return ByStyle(line, line.TextContent);
+        if (string.IsNullOrEmpty(spanText)
+            && ByStyle(line, line.TextContent, new NoDate()) is DateBlock dateBlock)
+        { // we have no text to go on but the style matches
+            return (dateBlock, GetStateUpdate(dateBlock));
         }
 
+        DocDateFactory factory = new(parser.State.LanguageService);
+        DocDate date = factory.Create(dateText);
 
-        if ((ByText(parser.LanguageService, spanText, dateText, line.Style)
-            ?? ByStyle(line, spanText, dateText, line.Style))
+        if ((ByText(parser.State.LanguageService, spanText, date, line.Style)
+            ?? ByStyle(line, spanText, date, line.Style))
             is DateBlock block)
         {
-            return block;
+            return (block, GetStateUpdate(block));
         }
 
-        if (string.IsNullOrEmpty(dateText))
+        DateBlock fallbackDate = string.IsNullOrEmpty(dateText)
+            ? new OtherDate(line.TextContent, new NoDate())
+            : new OtherDate(spanText ?? "", new UnknownDate(dateText));
+
+        return (fallbackDate, GetStateUpdate(fallbackDate));
+    }
+
+    private static IStatefulParser<IBlock, Document.State>.StateUpdate? GetStateUpdate(DateBlock dateBlock)
+    {
+        if (dateBlock.Date is not ValidDate validDate)
         {
-            // There may be something in the date section that we didn't
-            // parse as a date. to avoid omitting it, we just insert it in the
-            // span and rely on users to fix it themselves.
-            return new OtherDate(line.TextContent, dateText);
-        } else
+            return null;
+        }
+        if (dateBlock.Key is not ReferenceKey key)
         {
-            return new OtherDate(spanText, dateText);
+            return null;
+        }
+        Document.State stateUpdate(Document.State s)
+        {
+            s.Metadata.Register(
+                new Reference(
+                    key,
+                    validDate.Date.ToString("o", System.Globalization.CultureInfo.InvariantCulture)));
+            return s;
         }
 
+        return stateUpdate;
     }
 
     private static (string?, string?) ExtractSpanAndDate(string text)
@@ -134,7 +157,7 @@ public abstract partial record DateBlock(
     }
 
 
-    private static DateBlock? ByText(LanguageService ls, string spanText, string? date, string? style = null) => spanText switch
+    private static DateBlock? ByText(LanguageService ls, string? spanText, DocDate date, string? style = null) => spanText switch
     {
         string t when MadeDate.IsMade(ls, t) => new MadeDate(spanText, date),
         string t when LaidDate.IsLaid(ls, t) => new LaidDate(spanText, date),
@@ -143,12 +166,13 @@ public abstract partial record DateBlock(
         _ => null,
     };
 
-    private static DateBlock? ByStyle(WLine line, string spanText, string? date = null, string? style = null) => line switch
+    private static readonly DocDate NO_DATE = new NoDate();
+    private static DateBlock? ByStyle(WLine line, string? spanText, DocDate date, string? style = null) => line switch
     {
-        WLine l when MadeDate.IsStyled(l) => new MadeDate(spanText, date),
-        WLine l when LaidDate.IsStyled(l) => new LaidDate(spanText, date),
-        WLine l when CommenceDate.IsStyled(l) => new CommenceDate(spanText, date, style),
-        WLine l when OtherDate.IsStyled(l) => new OtherDate(spanText, date),
+        WLine l when MadeDate.IsStyled(l) => new MadeDate(spanText ?? "", date),
+        WLine l when LaidDate.IsStyled(l) => new LaidDate(spanText ?? "", date),
+        WLine l when CommenceDate.IsStyled(l) => new CommenceDate(spanText ?? "", date, style),
+        WLine l when OtherDate.IsStyled(l) => new OtherDate(spanText ?? "", date),
         _ => null,
     };
 
@@ -174,11 +198,12 @@ public abstract partial record DateBlock(
 
 internal sealed partial record MadeDate(
     string SpanText,
-    string? DateText
+    DocDate DocDate
 ) : DateBlock(
     "madeDate",
     SpanText,
-    DocDate.ToDate(DateText, ReferenceKey.varMadeDate))
+    DocDate,
+    ReferenceKey.varMadeDate)
 {
     public const ReferenceKey KEY = ReferenceKey.varMadeDate;
     public static bool IsMade(LanguageService languageService, string text) =>
@@ -206,11 +231,12 @@ internal sealed partial record MadeDate(
 
 internal sealed partial record LaidDate(
     string SpanText,
-    string? DateText
+    DocDate DocDate
 ) : DateBlock(
     "laidDate",
     SpanText,
-    DocDate.ToDate(DateText, ReferenceKey.varLaidDate))
+    DocDate,
+    ReferenceKey.varLaidDate)
 {
     public static bool IsLaid(LanguageService languageService, string text) =>
         languageService.IsMatch(text, LanguagePatterns)?.Count > 0;
@@ -237,12 +263,13 @@ internal sealed partial record LaidDate(
 
 internal sealed partial record CommenceDate(
     string SpanText,
-    string? DateText,
+    DocDate DocDate,
     string? Style
 ) : DateBlock(
     "commenceDate",
     SpanText,
-    DocDate.ToDate(DateText, ReferenceKey.varCommenceDate),
+    DocDate,
+    ReferenceKey.varCommenceDate,
     Style switch
     {
         Coming => null,
@@ -276,10 +303,11 @@ internal sealed partial record CommenceDate(
 
 internal sealed partial record OtherDate(
     string SpanText,
-    string? DateText
+    DocDate DocDate
 ) : DateBlock("otherDate",
     SpanText,
-    DocDate.ToDate(DateText, ReferenceKey.varOtherDate))
+    DocDate,
+    ReferenceKey.varOtherDate)
 {
     public static bool IsKnownOtherDate(LanguageService languageService, string text) =>
         languageService.IsMatch(text, LanguagePatterns)?.Count > 0;

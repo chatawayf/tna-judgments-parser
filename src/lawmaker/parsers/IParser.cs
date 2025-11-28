@@ -21,7 +21,7 @@ public interface IParser<T>
 {
 
     // This doesn't really belong here
-    LanguageService LanguageService { get; }
+    // LanguageService LanguageService { get; }
 
     // TODO: make private
     internal int Save();

@@ -7,23 +7,21 @@ using System.Xml.Linq;
 using static  UK.Gov.Legislation.Lawmaker.XmlNamespaces;
 
 namespace UK.Gov.Legislation.Lawmaker.Date;
-public abstract partial record DocDate() : IBuildable<XNode>
+
+partial class DocDateFactory(LanguageService languageService)
 {
-    public abstract XNode? Build(Document document);
 
 
     // Only dates of the format "d MMMM yyyy" with or without an ordinal suffix will parse successfully
     // or just a year "yyyy"
     // e.g. "17th June 2025", "9 October 2021", "2025"
     // Any other format will result in the date attribute being set to "9999-01-01"
-    private static readonly CultureInfo[] cultures = [CultureInfo.GetCultureInfo("en-GB"), CultureInfo.GetCultureInfo("cy-GB")];
     private static readonly Dictionary<string, string> formats = new() {
             { "d MMMM yyyy", "d'th' MMMM yyyy" },
             { "yyyy", "yyyy"},
     };
 
-
-    public static DocDate ToDate(string? text, ReferenceKey key)
+    internal DocDate Create(string? text)
     {
         if (string.IsNullOrEmpty(text)) return new NoDate();
         // Remove ordinal suffix from date if there is one
@@ -39,7 +37,7 @@ public abstract partial record DocDate() : IBuildable<XNode>
             return new PlaceholderDate();
         }
 
-        foreach (CultureInfo culture in cultures)
+        foreach (CultureInfo culture in languageService.Cultures)
         {
             foreach (string format in formats.Keys)
             {
@@ -50,7 +48,7 @@ public abstract partial record DocDate() : IBuildable<XNode>
                     DateTimeStyles.None,
                     out DateTime dateTime))
                 {
-                    return new ValidDate(dateTime, text, formats[format], key);
+                    return new ValidDate(dateTime, text, formats[format]);
                 }
             }
         }
@@ -63,43 +61,39 @@ public abstract partial record DocDate() : IBuildable<XNode>
         }
     }
 
+    [GeneratedRegex(@"(\d+)(st|nd|rd|th)")]
+    private static partial Regex OrdinalPostfix();
+
     // "***" is a placeholder for dates
     // We check for 2 or more for safety
     [GeneratedRegex( @"\*\*\**")]
     private static partial Regex PlaceholderRegex();
+}
 
-    [GeneratedRegex(@"(\d+)(st|nd|rd|th)")]
-    private static partial Regex OrdinalPostfix();
-};
+interface DocDate : IBuildable<XNode> {};
 
 record PlaceholderDate() : DocDate
 {
-    public override XNode? Build(Document _) =>
+    public XNode? Build(Document _) =>
         new XElement(akn + "docDate",
             new XAttribute("date", "9999-01-01")
         );
 };
 
-record ValidDate(DateTime Date, string DateText, string Format, ReferenceKey Key) : DocDate
+record ValidDate(DateTime Date, string DateText, string Format) : DocDate
 {
-    public override XNode Build(Document document)
+    public XNode Build(Document document)
     {
-        Reference _ = document.Metadata
-            .Register(new Reference(Key, Date.ToString("o", System.Globalization.CultureInfo.InvariantCulture)));
         return new XElement(akn + "docDate",
             new XAttribute("date", Date.ToString("yyyy-MM-dd")),
             new XText(DateText));
-            // new XElement(akn + "ref",
-            //     new XAttribute(ukl + "dateFormat", Format),
-            //     new XAttribute(akn + "class", "#placeholder"),
-            //     new XAttribute("href", $"#{dateRef.EId}")));
     }
 
 };
 
 record NoDate() : DocDate
 {
-    public override XNode? Build(Document _) =>
+    public XNode? Build(Document _) =>
         new XElement(akn + "docDate",
             new XAttribute("date", "9999-01-01")
         );
@@ -107,7 +101,7 @@ record NoDate() : DocDate
 
 record UnknownDate(string Text) : DocDate
 {
-    public override XNode Build(Document _) =>
+    public XNode Build(Document _) =>
         new XElement(akn + "docDate",
             new XAttribute("date", "9999-01-01"),
             new XText(Text)

@@ -12,7 +12,7 @@ using DocumentFormat.OpenXml.Bibliography;
 namespace UK.Gov.Legislation.Lawmaker
 {
 
-    partial class LegislationParser : BlockParser
+    partial class LegislationParser : BlockParser, IStatefulParser<IBlock, Document.State>
     {
 
         internal static bool IsCenterAligned(WLine line)

@@ -103,7 +103,7 @@ public class LanguageService
         .FirstOrDefault();
 
     /// <summary>
-    /// Creates a copy of <paramref name="languagePatterns"/> with all inactive language entries removed. 
+    /// Creates a copy of <paramref name="languagePatterns"/> with all inactive language entries removed.
     /// </summary>
     /// <param name="languagePatterns">Dictionary of language-specific regex patterns</param>
     /// <returns>A copy of <paramref name="languagePatterns"/> with all inactive language entries removed</returns>
